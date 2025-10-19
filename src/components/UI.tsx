@@ -58,3 +58,23 @@ export function Button({ children, color = "black", ...props }: any) {
     </button>
   );
 }
+
+export function Select({ label, options = [], value, onChange, ...props }: any) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <select
+        value={value}
+        onChange={onChange}
+        {...props}
+        className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-gray-800/30 outline-none transition cursor-pointer"
+      >
+        {options.map((opt: any) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
