@@ -1,57 +1,74 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/Order";
 
-const UpdateOrderZ = z.object({
-  // all optional for partial updates
-  orderNo: z.number().optional(),
-  customer: z.string().optional(),
-  type: z.enum(["Customer","Wholesale","Walk-in"]).optional(),
-  items: z.array(z.object({
-    item: z.string(),
-    quantity: z.number().int().min(1),
-    notes: z.string().optional(),
-    nameSnapshot: z.string().optional(),
-    priceSnapshot: z.number().optional(),
-  })).optional(),
-  orderAmount: z.number().optional(),
-  orderPlusDelivery: z.number().optional(),
-  storeAmount: z.number().optional(),
-  discount: z.number().optional(),
-  deliveryFee: z.number().optional(),
-  deliveryCost: z.number().optional(),
-  costAmount: z.number().optional(),
-  profitLoss: z.number().optional(),
-  currency: z.string().optional(),
-  paymentMethod: z.enum(["Cash (CoD)", "Online (EasyPaisa)", "Online (JazzCash)", "Card"]).optional(),
-  status: z.enum(["Pending","Processing","Completed","Cancelled"]).optional(),
-  date: z.coerce.date().optional(),
-  notes: z.string().optional(),
-});
-
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params; // ✅ Await the promise
   await connectDB();
-  const order = await Order.findById(params.id)
-    .populate("customer", "name phone")
-    .populate("items.item", "name price");
-  return NextResponse.json(order);
+
+  try {
+    const order = await Order.findById(id).populate("customer").populate("items.item");
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(order);
+  } catch (error: any) {
+    console.error("❌ GET /api/orders/[id] failed:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch order", details: error.message },
+      { status: 500 }
+    );
+  }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params; // ✅ Await here too
   await connectDB();
-  const body = await req.json();
-  const parsed = UpdateOrderZ.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const updated = await Order.findByIdAndUpdate(params.id, parsed.data, { new: true })
-    .populate("customer", "name phone")
-    .populate("items.item", "name price");
-  return NextResponse.json(updated);
+  try {
+    const body = await request.json();
+    const updatedOrder = await Order.findByIdAndUpdate(id, body, { new: true });
+
+    if (!updatedOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedOrder);
+  } catch (error: any) {
+    console.error("❌ PUT /api/orders/[id] failed:", error);
+    return NextResponse.json(
+      { error: "Failed to update order", details: error.message },
+      { status: 500 }
+    );
+  }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params; // ✅ await params
   await connectDB();
-  await Order.findByIdAndDelete(params.id);
-  return NextResponse.json({ ok: true });
+
+  try {
+    const deleted = await Order.findByIdAndDelete(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error("❌ DELETE /api/orders/[id] failed:", error);
+    return NextResponse.json(
+      { error: "Failed to delete order", details: error.message },
+      { status: 500 }
+    );
+  }
 }
