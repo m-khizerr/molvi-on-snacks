@@ -3,35 +3,30 @@ import { connectDB } from "@/lib/mongodb";
 import Item from "@/models/Item";
 import { v2 as cloudinary } from "cloudinary";
 
-// ✅ Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ✅ Update Item by ID
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params; // ✅ await here
   await connectDB();
 
   try {
     const formData = await request.formData();
-
     const name = formData.get("name") as string;
     const unit = formData.get("unit") as string;
     const baseCost = parseFloat(formData.get("baseCost") as string);
     const price = parseFloat(formData.get("price") as string);
     const files = formData.getAll("images") as File[];
 
-    // Upload new images to Cloudinary
     const uploadPromises = files.map(async (file) => {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-
       const uploaded = await new Promise<string>((resolve, reject) => {
         cloudinary.uploader
           .upload_stream({ folder: "items" }, (error, result) => {
@@ -40,7 +35,6 @@ export async function PUT(
           })
           .end(buffer);
       });
-
       return uploaded;
     });
 
@@ -52,12 +46,9 @@ export async function PUT(
       { new: true }
     );
 
-    if (!updated)
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-
     return NextResponse.json(updated);
   } catch (error: any) {
-    console.error("❌ PUT /api/items/[id] error:", error);
+    console.error("PUT /api/items/[id] failed:", error);
     return NextResponse.json(
       { error: "Failed to update item", details: error.message },
       { status: 500 }
@@ -65,22 +56,18 @@ export async function PUT(
   }
 }
 
-// ✅ Delete Item by ID
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params; // ✅ await here
   await connectDB();
 
   try {
-    const deleted = await Item.findByIdAndDelete(id);
-    if (!deleted)
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-
+    await Item.findByIdAndDelete(id);
     return NextResponse.json({ ok: true });
   } catch (error: any) {
-    console.error("❌ DELETE /api/items/[id] error:", error);
+    console.error("DELETE /api/items/[id] failed:", error);
     return NextResponse.json(
       { error: "Failed to delete item", details: error.message },
       { status: 500 }
