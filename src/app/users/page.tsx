@@ -82,7 +82,7 @@ export default function UsersPage() {
         users={admins}
         show={showAdmins}
         toggleShow={() => setShowAdmins((s) => !s)}
-        onEdit={(u) => {
+        onEdit={(u:any) => {
           setEditing(u);
           setForm({ ...u, password: "" });
           setOpen(true);
@@ -95,7 +95,7 @@ export default function UsersPage() {
         users={customers}
         show={showCustomers}
         toggleShow={() => setShowCustomers((s) => !s)}
-        onEdit={(u) => {
+        onEdit={(u: any) => {
           setEditing(u);
           setForm({ ...u, password: "" });
           setOpen(true);
